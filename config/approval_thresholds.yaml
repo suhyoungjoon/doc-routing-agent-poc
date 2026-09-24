@@ -1,0 +1,42 @@
+# 승인 게이트 설정 (gate.py)
+# rules 중 하나라도 만족하면 사람 승인 필요 (any 평가)
+version: 1
+
+rules:
+  - id: low_confidence
+    description: 분류 신뢰도가 기준 미만
+    field: confidence
+    op: lt
+    value: 0.8
+
+  - id: high_amount
+    description: 금액이 기준 초과 (원)
+    field: extracted.total_amount|extracted.contract_amount
+    op: gt
+    value: 10000000
+
+  - id: sensitive_category
+    description: 법무 검토가 필요한 카테고리
+    field: category
+    op: in
+    value: [contract]
+
+  - id: missing_required_fields
+    description: 필수 필드 누락
+    field: missing_fields
+    op: not_empty
+
+  - id: injection_flagged
+    description: 방어 모듈이 인젝션 의심 플래그를 남김
+    field: defense.flagged
+    op: eq
+    value: true
+
+  - id: fallback_category
+    description: 미분류로 떨어진 문서
+    field: category
+    op: eq
+    value_from: categories.fallback.name   # 값을 코드에 쓰지 않도록 다른 설정 참조
+
+# 승인 불필요 시 동작
+auto_approve: true

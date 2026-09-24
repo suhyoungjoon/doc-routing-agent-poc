@@ -1,0 +1,63 @@
+# 프롬프트 인젝션 방어 설정 (defense.py가 classifier 앞단에서 사용)
+version: 1
+
+# 매칭 전 정규화 옵션
+normalize:
+  lowercase: true
+  collapse_whitespace: true
+  strip_zero_width: true   # U+200B 등 제로폭 문자 제거 후 매칭
+
+# type: regex | substring
+# severity: low | medium | high
+patterns:
+  - id: ignore_previous_en
+    type: regex
+    pattern: 'ignore\s+(all\s+)?(the\s+)?(previous|prior|above)\s+(instructions|prompts?|rules)'
+    severity: high
+  - id: ignore_previous_ko
+    type: regex
+    pattern: '(이전|앞의|위의|기존)\s*(모든\s*)?(지시|지침|명령|규칙).{0,10}(무시|잊어)'
+    severity: high
+  - id: role_override_en
+    type: regex
+    pattern: '(you\s+are\s+now|act\s+as|pretend\s+to\s+be)\s+'
+    severity: medium
+  - id: system_prompt_ref
+    type: regex
+    pattern: '(system\s*prompt|시스템\s*프롬프트)'
+    severity: medium
+  - id: forced_classification_ko
+    type: regex
+    pattern: '(이\s*문서는?|본\s*문서는?).{0,20}(으로|로)\s*(분류|처리|라우팅)\s*(하라|해라|할\s*것|하세요|해주세요)'
+    severity: high
+  - id: forced_classification_en
+    type: regex
+    pattern: '(classify|route|mark)\s+(this|the)\s+(document|file|message)\s+as'
+    severity: high
+  - id: approval_bypass
+    type: regex
+    pattern: '(승인\s*(없이|생략|불필요)|skip\s+(the\s+)?approval|no\s+approval\s+(is\s+)?(needed|required))'
+    severity: high
+  - id: ai_addressing
+    type: regex
+    pattern: '(ai\s*(assistant|에이전트|agent)|assistant|어시스턴트|분류\s*모델)\s*(에게|께|:|,)'
+    severity: low
+  - id: hidden_markup
+    type: substring
+    pattern: '<!--'
+    severity: low
+
+# 탐지 시 정책
+# action:
+#   block     - classifier 호출하지 않고 fallback 카테고리로 보냄
+#   sanitize  - 매칭 구간을 replacement로 치환한 뒤 classifier 호출
+#   flag      - 그대로 classifier 호출하되 결과에 플래그, gate에서 승인 강제
+on_detect:
+  # severity 별 정책. 한 문서에 여러 매칭이 있으면 가장 높은 severity 정책 적용
+  by_severity:
+    high: block
+    medium: sanitize
+    low: flag
+  replacement: '[REDACTED_BY_DEFENSE]'
+  # 탐지 여부와 무관하게 classifier에는 문서를 '데이터'로 감싸서 전달
+  wrap_document_as_data: true

@@ -1,0 +1,36 @@
+# 문서 분류 카테고리 정의
+# - name: 분류 결과로 사용되는 식별자 (classifier 출력과 1:1)
+# - required_fields: 분류 후 반드시 추출해야 하는 필드
+# - route_to: 최종 라우팅 경로 (router가 사용)
+version: 1
+
+categories:
+  - name: invoice
+    label: 세금계산서/청구서
+    description: 공급자가 대금 지급을 요청하는 문서. 청구 금액, 지급 기한이 포함됨.
+    required_fields: [vendor_name, invoice_number, total_amount, due_date]
+    route_to: routed/finance/accounts_payable
+
+  - name: contract
+    label: 계약서
+    description: 둘 이상 당사자 간 권리·의무를 정한 문서. 계약 기간, 당사자, 금액 조항 포함.
+    required_fields: [counterparty, contract_title, effective_date, contract_amount]
+    route_to: routed/legal/contracts
+
+  - name: hr_request
+    label: 인사 요청
+    description: 휴가, 채용, 인사 발령, 증명서 발급 등 인사 관련 요청 문서.
+    required_fields: [employee_name, request_type, requested_date]
+    route_to: routed/hr/requests
+
+  - name: customer_complaint
+    label: 고객 민원
+    description: 고객이 제품·서비스에 대한 불만이나 보상을 요청하는 문서.
+    required_fields: [customer_name, product_or_service, complaint_summary]
+    route_to: routed/cs/complaints
+
+# 어느 카테고리에도 확신이 없거나 방어/게이트에서 걸린 문서의 기본 목적지
+fallback:
+  name: unclassified
+  label: 미분류/수동 검토
+  route_to: routed/manual_review
