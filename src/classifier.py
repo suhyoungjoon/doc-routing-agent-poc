@@ -196,13 +196,16 @@ def _usage_dict(usage: Any) -> dict[str, Any]:
 
 if __name__ == "__main__":
     from connector import DocumentConnector
+    from tracing import Tracer, traced_classifier, traced_connector
 
     if len(sys.argv) < 2:
         print("usage: python src/classifier.py <doc> [<doc> ...]", file=sys.stderr)
         sys.exit(2)
-    conn = DocumentConnector()
-    clf = Classifier()
+    tracer = Tracer()
+    conn = traced_connector(DocumentConnector(), tracer)
+    clf = traced_classifier(Classifier(), tracer)
     for rel in sys.argv[1:]:
         doc = conn.read(rel)
         result = clf.classify(doc.text, doc_id=doc.doc_id)
         print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    print(f"trace: {tracer.path}", file=sys.stderr)
