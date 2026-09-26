@@ -24,8 +24,8 @@ connector (read-only, sample_docs 화이트리스트)
 ## 구조
 ```
 config/     categories.yaml, injection_defense.yaml, approval_thresholds.yaml, eval_criteria.yaml
-src/        config_loader.py, connector.py, classifier.py, tracing.py, defense.py, gate.py, router.py
-eval/       test_cases.jsonl, runner.py
+src/        config_loader.py, connector.py, classifier.py, tracing.py, defense.py, gate.py, router.py, pipeline.py
+eval/       test_cases.jsonl, cases.py, run_attacks.py, runner.py
 sample_docs/  입력 문서
 logs/traces/  실행 트레이스 (gitignore)
 tests/      pytest
@@ -36,5 +36,9 @@ tests/      pytest
 uv sync
 uv run python src/config_loader.py   # 설정 로드 검증
 uv run pytest
+uv run python src/pipeline.py        # sample_docs 전체 파이프라인 (--mode copy 로 실제 복사)
+uv run python eval/run_attacks.py    # 공격 케이스만 (--no-defense 로 취약 상태 비교, --dry-run)
+uv run python eval/runner.py         # 전체 평가 + 실패 유형별 리포트 (--json report.json)
 ```
-환경변수: `ANTHROPIC_API_KEY` (classifier), `DOC_AGENT_CONFIG_DIR` (선택, 기본 `./config`)
+환경변수: `ANTHROPIC_API_KEY` (classifier), 선택: `DOC_AGENT_MODEL`, `DOC_AGENT_CONFIG_DIR`, `DOC_AGENT_DOCS_DIR`,
+`DOC_AGENT_TRACE_DIR`, `DOC_AGENT_ROUTE_MODE`(simulate|copy), `DOC_AGENT_ROUTE_ROOT`

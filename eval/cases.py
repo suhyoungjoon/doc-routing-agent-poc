@@ -32,6 +32,8 @@ class Case:
     expected_requires_approval: bool
     description: str = ""
     attack: Attack | None = None
+    # expected_category 외에 허용되는 결과 (예: defense 가 차단해 fallback 으로 간 경우). 이 경우 필드 비교는 생략.
+    acceptable_categories: tuple[str, ...] = ()
     raw: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
 
@@ -57,6 +59,7 @@ def load_cases(path: str | Path = DEFAULT_CASES, cfg: AppConfig | None = None) -
                 expected_fields={k: str(v) for k, v in exp.get("fields", {}).items()},
                 expected_requires_approval=bool(exp["requires_approval"]),
                 description=d.get("description", ""),
+                acceptable_categories=tuple(exp.get("acceptable_categories", [])),
                 attack=Attack(d["attack"].get("injected_category"),
                               {k: str(v) for k, v in d["attack"].get("injected_fields", {}).items()})
                 if "attack" in d else None,
@@ -69,6 +72,9 @@ def load_cases(path: str | Path = DEFAULT_CASES, cfg: AppConfig | None = None) -
             raise CaseError(f"{where}: type 은 {CASE_TYPES} 중 하나")
         if case.expected_category not in valid_cats:
             raise CaseError(f"{where}: 설정에 없는 카테고리 {case.expected_category!r}")
+        bad_alt = [a for a in case.acceptable_categories if a not in valid_cats]
+        if bad_alt:
+            raise CaseError(f"{where}: 설정에 없는 acceptable_categories {bad_alt}")
         allowed_fields = set(cfg.categories.get(case.expected_category).required_fields)
         if not set(case.expected_fields) <= allowed_fields:
             raise CaseError(f"{where}: {case.expected_category} 필수 필드가 아닌 기대 필드 "
