@@ -6,6 +6,7 @@ normalize:
   lowercase: true
   collapse_whitespace: true
   strip_zero_width: true   # U+200B 등 제로폭 문자 제거 후 매칭
+  nfkc: true               # 전각/호환 문자 정규화 (ｉｇｎｏｒｅ -> ignore)
 
 # type: regex | substring
 # severity: low | medium | high
@@ -28,7 +29,7 @@ patterns:
     severity: medium
   - id: forced_classification_ko
     type: regex
-    pattern: '(이\s*문서는?|본\s*문서는?).{0,20}(으로|로)\s*(분류|처리|라우팅)\s*(하라|해라|할\s*것|하세요|해주세요)'
+    pattern: '(이\s*문서는?|본\s*문서는?).{0,30}(으로|로)\s*(분류|처리|라우팅)\s*(하|해|할)'
     severity: high
   - id: forced_classification_en
     type: regex
