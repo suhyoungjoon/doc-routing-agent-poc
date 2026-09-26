@@ -228,3 +228,18 @@ GATE_DECISIONS: dict[str, Decide] = {
 
 def traced_gate(gate: Any, tracer: Tracer) -> TracedProxy:
     return tracer.wrap(gate, "gate", GATE_DECISIONS, only={"evaluate"})
+
+
+ROUTER_DECISIONS: dict[str, Decide] = {
+    "route": lambda r: {
+        "status": r.status,
+        "destination": r.destination,
+        "mode": r.mode,
+        "performed": r.performed,
+        "note": r.note,
+    },
+}
+
+
+def traced_router(router: Any, tracer: Tracer) -> TracedProxy:
+    return tracer.wrap(router, "router", ROUTER_DECISIONS, only={"route"})
