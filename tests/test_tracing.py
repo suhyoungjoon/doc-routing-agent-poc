@@ -191,3 +191,18 @@ def test_defense_scan_traced_only(tracer):
     assert rec["component"] == "defense" and rec["operation"] == "scan"
     assert rec["decision"]["flagged"] is True
     assert "ignore_previous_en" in rec["decision"]["pattern_ids"]
+
+
+def test_gate_evaluate_traced(tracer):
+    from gate import ApprovalGate
+    from tracing import traced_gate
+
+    cfg = get_config()
+    g = traced_gate(ApprovalGate(cfg), tracer)
+    d = g.evaluate({"category": cfg.categories.fallback.name, "confidence": 0.0, "extracted": {},
+                    "missing_fields": [], "defense": None, "error": None})
+    assert d.requires_approval
+    (rec,) = read_lines(tracer.path)
+    assert rec["component"] == "gate" and rec["decision"]["requires_approval"] is True
+    assert "fallback_category" in rec["decision"]["rule_ids"]
+    assert rec["input"]["ctx"]["category"] == cfg.categories.fallback.name

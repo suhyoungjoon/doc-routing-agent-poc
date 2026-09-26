@@ -216,3 +216,15 @@ def traced_classifier(classifier: Any, tracer: Tracer) -> TracedProxy:
 
 def traced_defense(defense: Any, tracer: Tracer) -> TracedProxy:
     return tracer.wrap(defense, "defense", DEFENSE_DECISIONS, only={"scan"})
+
+
+GATE_DECISIONS: dict[str, Decide] = {
+    "evaluate": lambda d: {
+        "requires_approval": d.requires_approval,
+        "rule_ids": [t["rule_id"] for t in d.triggered],
+    },
+}
+
+
+def traced_gate(gate: Any, tracer: Tracer) -> TracedProxy:
+    return tracer.wrap(gate, "gate", GATE_DECISIONS, only={"evaluate"})
