@@ -99,8 +99,10 @@ class Tracer:
                     duration_ms=(time.perf_counter() - start) * 1000)
         return result
 
-    def wrap(self, target: Any, component: str, decisions: dict[str, Decide] | None = None) -> "TracedProxy":
-        return TracedProxy(target, self, component, decisions or {})
+    def wrap(self, target: Any, component: str, decisions: dict[str, Decide] | None = None,
+             only: set[str] | None = None) -> "TracedProxy":
+        """only 가 주어지면 해당 메서드만 기록하고 나머지는 그대로 통과."""
+        return TracedProxy(target, self, component, decisions or {}, only)
 
     # ------------------------------------------------------------ 직렬화
 
@@ -130,7 +132,9 @@ class Tracer:
 class TracedProxy:
     """대상 객체의 공개 메서드 호출을 Tracer 로 기록하는 프록시. 속성 접근은 그대로 통과."""
 
-    def __init__(self, target: Any, tracer: Tracer, component: str, decisions: dict[str, Decide]):
+    def __init__(self, target: Any, tracer: Tracer, component: str, decisions: dict[str, Decide],
+                 only: set[str] | None = None):
+        object.__setattr__(self, "_only", only)
         object.__setattr__(self, "_target", target)
         object.__setattr__(self, "_tracer", tracer)
         object.__setattr__(self, "_component", component)
@@ -138,7 +142,7 @@ class TracedProxy:
 
     def __getattr__(self, name: str) -> Any:
         attr = getattr(self._target, name)
-        if name.startswith("_") or not callable(attr):
+        if name.startswith("_") or not callable(attr) or (self._only is not None and name not in self._only):
             return attr
 
         def traced(*args: Any, **kwargs: Any) -> Any:
@@ -188,6 +192,16 @@ CLASSIFIER_DECISIONS: dict[str, Decide] = {
         "confidence": r.confidence,
         "missing_fields": list(r.missing_fields),
         "error": r.error,
+        "defense_action": (getattr(r, "defense", None) or {}).get("action"),
+    },
+}
+
+DEFENSE_DECISIONS: dict[str, Decide] = {
+    "scan": lambda r: {
+        "action": r.action,
+        "flagged": r.flagged,
+        "max_severity": r.max_severity,
+        "pattern_ids": [m.pattern_id for m in r.matches],
     },
 }
 
@@ -198,3 +212,7 @@ def traced_connector(connector: Any, tracer: Tracer) -> TracedProxy:
 
 def traced_classifier(classifier: Any, tracer: Tracer) -> TracedProxy:
     return tracer.wrap(classifier, "classifier", CLASSIFIER_DECISIONS)
+
+
+def traced_defense(defense: Any, tracer: Tracer) -> TracedProxy:
+    return tracer.wrap(defense, "defense", DEFENSE_DECISIONS, only={"scan"})

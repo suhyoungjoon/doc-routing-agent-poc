@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from config_loader import AppConfig, get_config
 
@@ -35,6 +35,7 @@ class ClassificationResult:
     stop_reason: str | None = None
     error: str | None = None
     usage: dict[str, Any] = field(default_factory=dict)
+    defense: dict[str, Any] | None = None  # 6단계 defense 를 거친 경우 탐지 결과
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -97,7 +98,8 @@ def build_user_message(text: str) -> str:
 
 
 class Classifier:
-    def __init__(self, client: Any = None, *, model: str | None = None, config: AppConfig | None = None):
+    def __init__(self, client: Any = None, *, model: str | None = None, config: AppConfig | None = None,
+                 message_builder: Callable[[str], str] | None = None, extra_system: str = ""):
         if client is None:
             import anthropic
 
@@ -106,7 +108,14 @@ class Classifier:
         self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
         self.cfg = config or get_config()
         self._schema = build_output_schema(self.cfg)
-        self._system = build_system_prompt(self.cfg)
+        self._base_system = build_system_prompt(self.cfg)
+        # 기본값은 3단계의 취약한 프롬프트. defense.harden() 이 교체한다.
+        self.message_builder = message_builder or build_user_message
+        self.extra_system = extra_system
+
+    @property
+    def system_prompt(self) -> str:
+        return self._base_system + ("\n\n" + self.extra_system if self.extra_system else "")
 
     def build_request(self, text: str) -> dict[str, Any]:
         return dict(
@@ -114,8 +123,8 @@ class Classifier:
             max_tokens=MAX_TOKENS,
             betas=[FALLBACK_BETA],
             fallbacks="default",
-            system=self._system,
-            messages=[{"role": "user", "content": build_user_message(text)}],
+            system=self.system_prompt,
+            messages=[{"role": "user", "content": self.message_builder(text)}],
             output_config={"format": {"type": "json_schema", "schema": self._schema}},
         )
 
